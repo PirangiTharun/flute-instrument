@@ -33,6 +33,7 @@ svg text{fill:var(--mut);font:600 15px "Bricolage Grotesque",system-ui,sans-seri
 .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 button.b{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}
 button.p{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;min-width:96px}
+.count-in{padding:5px 10px;border-radius:8px;background:var(--hi);color:var(--hit);font-weight:600}
 label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.95rem}
 input[type=range]{width:130px;accent-color:var(--acc)}
 button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
@@ -49,6 +50,7 @@ button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
 <svg id="fl" viewBox="0 0 760 270" role="img" aria-label="Flute with finger positions"></svg>
 <div class="ctl" style="margin-top:8px">
 <button class="b p" id="pl">▶ Play</button>
+<span class="count-in" id="ci" role="status" aria-live="assertive" hidden></span>
 <button class="b" id="bk" aria-label="Previous note">⏮</button><button class="b" id="fw" aria-label="Next note">⏭</button>
 <label>Speed <input type="range" id="bpm" min="30" max="150" value="64"><span id="bv">64</span></label>
 <label><input type="checkbox" id="lp"> Loop</label><label><input type="checkbox" id="snd" checked> Sound</label>
@@ -93,7 +95,7 @@ add('l12','Lesson 12','Five-note loops, version 2.',[['Aroha',rg(0,5).map(a=>q([
 add('bhopali','Raag Bhopali','Aroh: S R G P D S’. Avroh: S’ D P G R S. Thaat Kalyan, Tintal. Bandish Sthayi: “Jaa jaa jaa re ja re pathikva…”',[['Aroh',[q([0,1,2,4,5,7])]],['Avroh',[q([7,5,4,2,1,0])]],['Sthayi',[parse('GPGR GPDP GR SR P GR GRS'),parse("GRSS S'DSR GGR GRS")]]]);
 add('hamsa','Raag Hamsadhwani','Aroha: S R G P N S’. Avaroha: S’ N P G R S. Vadi R, Samvadi P. Time 6–9 PM.',[['Aroha',[q([0,1,2,4,6,7])]],['Avaroha',[q([7,6,4,2,1,0])]]]);
 // state
-let cur=0,playing=false,timer=null,ac=null,flat=[],lesson=L[0];
+let cur=0,playing=false,timer=null,countdownTimer=null,countdownRemaining=0,ac=null,flat=[],lesson=L[0];
 const svg=$('fl'),HX=[510,440,370,240,170,100];
 svg.innerHTML='<defs><linearGradient id="hf"><stop offset="50%" stop-color="var(--ink)"/><stop offset="50%" stop-color="var(--air)"/></linearGradient></defs>'
 +'<rect x="335" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><rect x="65" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
@@ -113,16 +115,17 @@ function mark(i){flat.forEach((x,k)=>{x.el.classList.toggle('on',k==i);x.el.clas
 function go(i,play){cur=i;mark(i);if(play)tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}
 function step(){const bt=60000/$('bpm').value;const x=flat[cur];timer=setTimeout(()=>{if(!playing)return;let n=cur+1;if(n>=flat.length){if($('lp').checked)n=0;else return stop()}go(n,true);step()},bt*(x.end?1.6:1))}
 function start(){playing=true;$('pl').textContent='⏸ Pause';go(cur,true);step()}
-function stop(){playing=false;clearTimeout(timer);$('pl').textContent='▶ Play'}
+function countIn(){countdownRemaining=3;$('ci').textContent=`Get ready: ${countdownRemaining}`;$('ci').hidden=false;$('pl').textContent='✕ Cancel';countdownTimer=setInterval(()=>{countdownRemaining--;if(countdownRemaining===0){clearInterval(countdownTimer);countdownTimer=null;$('ci').hidden=true;$('ci').textContent='';start()}else $('ci').textContent=`Get ready: ${countdownRemaining}`},1000)}
+function stop(){playing=false;clearTimeout(timer);clearInterval(countdownTimer);countdownTimer=null;countdownRemaining=0;$('ci').hidden=true;$('ci').textContent='';$('pl').textContent='▶ Play'}
 function load(id){stop();lesson=L.find(l=>l.id==id)||L[0];try{history.replaceState(null,'','#'+lesson.id)}catch(e){}
 $('lt').textContent=lesson.t;$('ls').textContent=lesson.sub;flat=[];const tr=$('tr');tr.innerHTML='';tr.scrollTop=0;
-lesson.secs.forEach(([h,rows])=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>{if(playing){clearTimeout(timer);go(idx,true);step()}else go(idx,true)};d.appendChild(b);flat.push({t,el:b,end:k==r.length-1})});tr.appendChild(d)})});
+lesson.secs.forEach(([h,rows])=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>{if(countdownTimer){cur=idx;mark(idx)}else if(playing){clearTimeout(timer);go(idx,true);step()}else go(idx,true)};d.appendChild(b);flat.push({t,el:b,end:k==r.length-1})});tr.appendChild(d)})});
 document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-current',p.dataset.id==lesson.id));const cp=document.querySelector(`.pill[data-id=${lesson.id}]`);if(cp)cp.scrollIntoView({inline:'center',block:'nearest'});cur=0;mark(0)}
 L.forEach(l=>{const b=document.createElement('button');b.className='pill';b.dataset.id=l.id;b.textContent=l.t.replace('Lesson ','L').replace('Raag ','');b.onclick=()=>load(l.id);$('pills').appendChild(b)});
 const nav=d=>{const i=L.indexOf(lesson)+d;if(i>=0&&i<L.length)load(L[i].id)};
 $('pv').onclick=()=>nav(-1);$('nx').onclick=()=>nav(1);
-$('pl').onclick=()=>playing?stop():start();
-$('fw').onclick=()=>{if(cur<flat.length-1)go(cur+1,true)};$('bk').onclick=()=>{if(cur>0)go(cur-1,true)};
+$('pl').onclick=()=>playing||countdownTimer?stop():countIn();
+$('fw').onclick=()=>{if(cur<flat.length-1)go(cur+1,!countdownTimer)};$('bk').onclick=()=>{if(cur>0)go(cur-1,!countdownTimer)};
 $('bpm').oninput=e=>$('bv').textContent=e.target.value;
 document.addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;if(e.code=='Space'){e.preventDefault();$('pl').click()}if(e.key=='ArrowRight')$('fw').click();if(e.key=='ArrowLeft')$('bk').click()});
 load((location.hash||'').slice(1));
