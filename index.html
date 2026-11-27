@@ -55,7 +55,7 @@ button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
 <label>Speed <input type="range" id="bpm" min="30" max="150" value="64"><span id="bv">64</span></label>
 <label><input type="checkbox" id="lp"> Loop</label><label><input type="checkbox" id="snd" checked> Sound</label>
 </div>
-<p class="note">Right-handed view: you look down at your own hands. Mouth hole on the right, right hand on holes 1–3, left hand on holes 4–6. Dark hole = closed, light = open, half-dark = half hole. Tap any note to jump to it. Fingerings follow the PDF chart (middle octave); check them against your teacher’s, and edit the F table in the page source if needed.</p>
+<p class="note">Play connects the notes legato in one continuous breath. Right-handed view: you look down at your own hands. Mouth hole on the right, right hand on holes 1–3, left hand on holes 4–6. Dark hole = closed, light = open, half-dark = half hole. Tap any note to jump to it. Fingerings follow the PDF chart (middle octave); check them against your teacher’s, and edit the F table in the page source if needed.</p>
 </section></main>
 <script>
 const $=id=>document.getElementById(id);
@@ -95,7 +95,7 @@ add('l12','Lesson 12','Five-note loops, version 2.',[['Aroha',rg(0,5).map(a=>q([
 add('bhopali','Raag Bhopali','Aroh: S R G P D S’. Avroh: S’ D P G R S. Thaat Kalyan, Tintal. Bandish Sthayi: “Jaa jaa jaa re ja re pathikva…”',[['Aroh',[q([0,1,2,4,5,7])]],['Avroh',[q([7,5,4,2,1,0])]],['Sthayi',[parse('GPGR GPDP GR SR P GR GRS'),parse("GRSS S'DSR GGR GRS")]]]);
 add('hamsa','Raag Hamsadhwani','Aroha: S R G P N S’. Avaroha: S’ N P G R S. Vadi R, Samvadi P. Time 6–9 PM.',[['Aroha',[q([0,1,2,4,6,7])]],['Avaroha',[q([7,6,4,2,1,0])]]]);
 // state
-let cur=0,playing=false,timer=null,countdownTimer=null,countdownRemaining=0,ac=null,flat=[],lesson=L[0];
+let cur=0,playing=false,timer=null,countdownTimer=null,countdownRemaining=0,ac=null,breath=null,flat=[],lesson=L[0];
 const svg=$('fl'),HX=[510,440,370,240,170,100];
 svg.innerHTML='<defs><linearGradient id="hf"><stop offset="50%" stop-color="var(--ink)"/><stop offset="50%" stop-color="var(--air)"/></linearGradient></defs>'
 +'<rect x="335" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><rect x="65" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
@@ -107,16 +107,21 @@ svg.innerHTML='<defs><linearGradient id="hf"><stop offset="50%" stop-color="var(
 function show(t){const fp=fing(t);[...fp].forEach((c,j)=>{const g=$('f'+j);g.style.transform=`translateY(${c=='X'?0:c=='H'?-22:-46}px)`;g.style.opacity=c=='X'?.95:c=='H'?.75:.3;$('h'+j).setAttribute('class','hole '+c)});
 const sm=SEMI[t.s];$('big').textContent=nm(t);
 $('mt').innerHTML=`<b>${FULL[t.s]}</b> · flute key ${WN[sm]}${t.o<0?' (low)':t.o>0?' (high)':''}<br>Blow ${t.o<0?'gently':t.o>0?'strongly':'moderately'}${t.o>0&&!F_HIGH[t.s]?' · approximate fingering':''}`}
-function tone(t,dur){if(!$('snd').checked)return;ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state=='suspended')ac.resume();
+function audio(){ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state=='suspended')ac.resume();return ac}
+function setBreathNote(t){if(!$('snd').checked)return;const ctx=audio(),now=ctx.currentTime,f=261.63*Math.pow(2,(SEMI[t.s]+12*t.o)/12);if(!breath){const g=ctx.createGain();g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(.3,now+.07);g.connect(ctx.destination);const nodes=[],oscillators=[];
+[[1,1],[2,.3],[3,.1]].forEach(([m,a])=>{const o=ctx.createOscillator(),ga=ctx.createGain(),l=ctx.createOscillator(),lg=ctx.createGain();o.frequency.value=f*m;ga.gain.value=a;l.frequency.value=5.2;lg.gain.value=f*m*.004;o.connect(ga);ga.connect(g);l.connect(lg);lg.connect(o.frequency);o.start(now);l.start(now);nodes.push(o,l);oscillators.push(o)});const b=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=ctx.createBufferSource(),bp=ctx.createBiquadFilter(),ng=ctx.createGain();s.buffer=b;s.loop=true;bp.type='bandpass';bp.frequency.value=f*2;ng.gain.value=.012;s.connect(bp);bp.connect(ng);ng.connect(g);s.start(now);nodes.push(s);breath={g,nodes,oscillators,filter:bp};}
+const glide=ctx.currentTime;breath.oscillators.forEach((o,i)=>o.frequency.setTargetAtTime(f*(i+1),glide,.025));breath.filter.frequency.setTargetAtTime(f*2,glide,.025)}
+function endBreath(){if(!breath)return;const voice=breath;breath=null;const now=ac.currentTime,stopAt=now+.12;voice.g.gain.cancelScheduledValues(now);voice.g.gain.setValueAtTime(voice.g.gain.value,now);voice.g.gain.linearRampToValueAtTime(0,stopAt);voice.nodes.forEach(n=>n.stop(stopAt))}
+function tone(t,dur){if(!$('snd').checked)return;audio();
 const f=261.63*Math.pow(2,(SEMI[t.s]+12*t.o)/12),n=ac.currentTime,g=ac.createGain();g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(.35,n+.07);g.gain.setValueAtTime(.3,n+dur-.1);g.gain.linearRampToValueAtTime(0,n+dur);g.connect(ac.destination);
 [[1,1],[2,.3],[3,.1]].forEach(([m,a])=>{const o=ac.createOscillator(),ga=ac.createGain();o.frequency.value=f*m;ga.gain.value=a;o.connect(ga);ga.connect(g);const l=ac.createOscillator(),lg=ac.createGain();l.frequency.value=5.2;lg.gain.value=f*m*.004;l.connect(lg);lg.connect(o.frequency);l.start(n);l.stop(n+dur);o.start(n);o.stop(n+dur)});
 const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=ac.createBufferSource();s.buffer=b;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f*2;const ng=ac.createGain();ng.gain.value=.05;s.connect(bp);bp.connect(ng);ng.connect(g);s.start(n)}
 function mark(i){flat.forEach((x,k)=>{x.el.classList.toggle('on',k==i);x.el.classList.toggle('done',k<i)});const e=flat[i].el;const bx=$('tr');const r=e.getBoundingClientRect(),br=bx.getBoundingClientRect();if(r.top<br.top||r.bottom>br.bottom)bx.scrollTop+=r.top-br.top-br.height/3;show(flat[i].t)}
-function go(i,play){cur=i;mark(i);if(play)tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}
+function go(i,play){cur=i;mark(i);if(play){if(playing)setBreathNote(flat[i].t);else tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}}
 function step(){const bt=60000/$('bpm').value;const x=flat[cur];timer=setTimeout(()=>{if(!playing)return;let n=cur+1;if(n>=flat.length){if($('lp').checked)n=0;else return stop()}go(n,true);step()},bt*(x.end?1.6:1))}
-function start(){playing=true;$('pl').textContent='⏸ Pause';go(cur,true);step()}
+function start(){playing=true;$('pl').textContent='⏸ Pause';setBreathNote(flat[cur].t);go(cur,false);step()}
 function countIn(){countdownRemaining=3;$('ci').textContent=`Get ready: ${countdownRemaining}`;$('ci').hidden=false;$('pl').textContent='✕ Cancel';countdownTimer=setInterval(()=>{countdownRemaining--;if(countdownRemaining===0){clearInterval(countdownTimer);countdownTimer=null;$('ci').hidden=true;$('ci').textContent='';start()}else $('ci').textContent=`Get ready: ${countdownRemaining}`},1000)}
-function stop(){playing=false;clearTimeout(timer);clearInterval(countdownTimer);countdownTimer=null;countdownRemaining=0;$('ci').hidden=true;$('ci').textContent='';$('pl').textContent='▶ Play'}
+function stop(){playing=false;clearTimeout(timer);clearInterval(countdownTimer);countdownTimer=null;countdownRemaining=0;endBreath();$('ci').hidden=true;$('ci').textContent='';$('pl').textContent='▶ Play'}
 function load(id){stop();lesson=L.find(l=>l.id==id)||L[0];try{history.replaceState(null,'','#'+lesson.id)}catch(e){}
 $('lt').textContent=lesson.t;$('ls').textContent=lesson.sub;flat=[];const tr=$('tr');tr.innerHTML='';tr.scrollTop=0;
 lesson.secs.forEach(([h,rows])=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>{if(countdownTimer){cur=idx;mark(idx)}else if(playing){clearTimeout(timer);go(idx,true);step()}else go(idx,true)};d.appendChild(b);flat.push({t,el:b,end:k==r.length-1})});tr.appendChild(d)})});
@@ -125,6 +130,7 @@ L.forEach(l=>{const b=document.createElement('button');b.className='pill';b.data
 const nav=d=>{const i=L.indexOf(lesson)+d;if(i>=0&&i<L.length)load(L[i].id)};
 $('pv').onclick=()=>nav(-1);$('nx').onclick=()=>nav(1);
 $('pl').onclick=()=>playing||countdownTimer?stop():countIn();
+$('snd').onchange=()=>{if(breath)breath.g.gain.setTargetAtTime($('snd').checked ? .3 : 0,ac.currentTime,.02)};
 $('fw').onclick=()=>{if(cur<flat.length-1)go(cur+1,!countdownTimer)};$('bk').onclick=()=>{if(cur>0)go(cur-1,!countdownTimer)};
 $('bpm').oninput=e=>$('bv').textContent=e.target.value;
 document.addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;if(e.code=='Space'){e.preventDefault();$('pl').click()}if(e.key=='ArrowRight')$('fw').click();if(e.key=='ArrowLeft')$('bk').click()});
