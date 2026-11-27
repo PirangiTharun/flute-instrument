@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bansuri Lessons – see and hear every note</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3ee;--card:#fbfdfb;--ink:#17261f;--mut:#5d6f66;--acc:#1f7a5a;--hi:#f0b429;--hit:#2a1d00;--line:#d3ddd5;--air:#fbfdfb;--skin:#d9a27a;--tube:#c9a35a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1a15;--card:#17251e;--ink:#e8f1ea;--mut:#9bb0a5;--acc:#4fc297;--line:#2a3d33;--air:#17251e;--skin:#b98258;--tube:#a8843f}}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:14px}
+h1{font-size:1.35rem;margin:4px 0 10px;font-weight:800}
+.pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin}
+.pill{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:7px 14px;font:inherit;cursor:pointer}
+.pill[aria-current=true]{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.lt{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lt b{font-size:1.1rem}.sub{color:var(--mut);font-size:.9rem;margin:0 0 6px}
+#tr{max-height:36vh;overflow-y:auto;padding-right:4px}
+.sec{font-weight:600;color:var(--acc);margin:8px 0 4px}
+.row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px dashed var(--line)}
+.chip{min-width:38px;padding:6px 8px;text-align:center;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink);font:600 1rem/1 inherit;cursor:pointer}
+.chip.done{opacity:.45}
+.chip.on{background:var(--hi);color:var(--hit);border-color:var(--hi);transform:scale(1.15);opacity:1;box-shadow:0 2px 10px #0004}
+.now{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#big{font-size:3rem;font-weight:800;line-height:1;min-width:90px;color:var(--acc)}
+.meta{color:var(--mut);font-size:.95rem}.meta b{color:var(--ink)}
+svg{width:100%;height:auto;display:block}
+.hole{stroke:var(--ink);stroke-width:2;transition:fill .1s}.hole.X{fill:var(--ink)}.hole.O{fill:var(--air)}.hole.H{fill:url(#hf)}
+.fg{transition:transform .12s ease-out,opacity .12s;fill:var(--skin);stroke:var(--ink);stroke-width:2}
+svg text{fill:var(--mut);font:600 15px "Bricolage Grotesque",system-ui,sans-serif;text-anchor:middle}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button.b{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;min-width:96px}
+label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.95rem}
+input[type=range]{width:130px;accent-color:var(--acc)}
+button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.note{color:var(--mut);font-size:.82rem;margin-top:8px}
+@media(max-width:560px){#big{font-size:2.4rem}#tr{max-height:30vh}}
+</style></head><body><main>
+<h1>Bansuri lessons – C natural, medium flute</h1>
+<nav class="pills" id="pills" aria-label="Lessons"></nav>
+<section class="card"><div class="lt"><b id="lt"></b><span>
+<button class="b" id="pv" aria-label="Previous lesson">‹ Prev</button> <button class="b" id="nx" aria-label="Next lesson">Next ›</button></span></div>
+<p class="sub" id="ls"></p><div id="tr"></div></section>
+<section class="card">
+<div class="now"><div id="big">S</div><div class="meta" id="mt"></div></div>
+<svg id="fl" viewBox="0 0 760 270" role="img" aria-label="Flute with finger positions"></svg>
+<div class="ctl" style="margin-top:8px">
+<button class="b p" id="pl">▶ Play</button>
+<button class="b" id="bk" aria-label="Previous note">⏮</button><button class="b" id="fw" aria-label="Next note">⏭</button>
+<label>Speed <input type="range" id="bpm" min="30" max="150" value="64"><span id="bv">64</span></label>
+<label><input type="checkbox" id="lp"> Loop</label><label><input type="checkbox" id="snd" checked> Sound</label>
+</div>
+<p class="note">Right-handed view: you look down at your own hands. Mouth hole on the right, right hand on holes 1–3, left hand on holes 4–6. Dark hole = closed, light = open, half-dark = half hole. Tap any note to jump to it. Fingerings follow the PDF chart (middle octave); check them against your teacher’s, and edit the F table in the page source if needed.</p>
+</section></main>
+<script>
+const $=id=>document.getElementById(id);
+const SEMI={S:0,r:1,R:2,g:3,G:4,m:5,M:6,P:7,d:8,D:9,n:10,N:11};
+const FULL={S:'Sa',r:'Re komal',R:'Re',g:'Ga komal',G:'Ga',m:'Ma',M:'Ma tivra',P:'Pa',d:'Dha komal',D:'Dha',n:'Ni komal',N:'Ni'};
+const WN=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// Fingerings: holes 1-6 from mouth end. X closed, O open, H half
+const F={S:'XXXOOO',r:'XXHOOO',R:'XXOOOO',g:'XHOOOO',G:'XOOOOO',m:'HOOOOO',M:'OOOOOO',P:'OXXXXX',d:'XXXXXH',D:'XXXXXO',n:'XXXXHO',N:'XXXXOO'};
+const F_LOW={P:'XXXXXX'};            // lower octave overrides (blow gently)
+const F_HIGH={S:'XOXOOO',r:'OOXOOO',R:'OXXXXO'}; // upper octave overrides (blow strongly)
+const fing=t=>(t.o<0&&F_LOW[t.s])||(t.o>0&&F_HIGH[t.s])||F[t.s];
+const nm=t=>t.o<0?"'"+t.s:t.o>0?t.s+"'":t.s;
+const SC=[['S',0],['R',0],['G',0],['M',0],['P',0],['D',0],['N',0],['S',1],['R',1]];
+const T=i=>i<0?{s:'N',o:-1}:{s:SC[i][0],o:SC[i][1]};
+const q=a=>a.map(T);
+const parse=s=>{const r=[];for(let i=0;i<s.length;i++){let c=s[i],o=0;if(c=="'"&&/[A-Za-z]/.test(s[i+1]||'')){o=-1;c=s[++i]}if(SEMI[c]===undefined)continue;if(s[i+1]=="'"){o=1;i++}r.push({s:c,o})}return r};
+const rg=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
+const A=rg(0,7),D=[...A].reverse();
+const win=n=>[rg(0,8-n).map(i=>rg(i,i+n-1)),rg(0,8-n).map(i=>D.slice(i,i+n))];
+const pat=(r,f)=>r.map(f);
+const L=[];
+const add=(id,t,sub,secs)=>L.push({id,t,sub,secs});
+add('l1','Lesson 1','Play each line in a single breath. Aim for 3 rounds in one breath.',[['Aroha',[q(A)]],['Avarohana',[q(D)]],['Both in one breath',[q([...A,...D.slice(1)])]]]);
+add('l2','Lesson 2','Groups of 3 notes, sliding up and down.',[['Aroha',win(3)[0].map(q)],['Avarohana',win(3)[1].map(q)]]);
+add('l3','Lesson 3','Groups of 4 notes.',[['Aroha',win(4)[0].map(q)],['Avarohana',win(4)[1].map(q)]]);
+add('l4','Lesson 4','Growing and shrinking runs.',[['Aroha',rg(1,8).map(n=>q(A.slice(0,n)))],['Avarohana',rg(0,7).map(i=>q(D.slice(i)))]]);
+add('l5','Lesson 5','Aroha: 3 forward, back to start. Avarohana: start, 2 backward, return.',[['Aroha',rg(0,5).map(i=>q([i,i+1,i+2,i]))],['Avarohana',rg(0,5).reverse().map(i=>q([i,i+2,i+1,i]))]]);
+add('l6','Lesson 6','Aroha: 2 forward, 1 skip, 1 back. Avarohana: start, 1 back, 2 forward.',[['Aroha',rg(0,5).map(i=>q([i,i+1,i+3,i+2]))],['Avarohana',rg(2,7).reverse().map(a=>q([a,a+1,a-1,a-2]))]]);
+add('l7','Lesson 7','Start, 1 skip, 2 back, return.',[['Aroha',rg(0,5).map(i=>q([i,i+2,i+1,i]))],['Avarohana',rg(0,5).reverse().map(i=>q([i,i+2,i+1,i]))]]);
+add('l8','Lesson 8','Five-note loops.',[['Aroha',rg(2,7).map(a=>q([a,a-1,a,a-1,a-2]))],['Avarohana',rg(0,5).reverse().map(a=>q([a,a+1,a+2,a+1,a+2]))]]);
+add('l9','Lesson 9','Skip and backward (practise together with Lesson 10).',[['Aroha',rg(-1,6).map(a=>q([a,a+2,a+1]))],['Avarohana',rg(0,7).reverse().map(a=>q([a,a+1,a-1]))]]);
+add('l10','Lesson 10','Skip and return, then Ma–Pa drills.',[['Aroha',rg(2,7).map(a=>q([a,a-2,a-1]))],['Avarohana',rg(1,6).reverse().map(a=>q([a,a-1,a+1]))],['M P × 10',[q(Array(10).fill([3,4]).flat())]],['P M × 10',[q(Array(10).fill([4,3]).flat())]]]);
+const sk=k=>{const u=[],d=[];for(let i=0;i+k+1<=7;i++){}let a=[];for(let i=0;i<8;i++){const j=i+k+1;if(j>7)break;a.push(i,j);if(i<8-k-1&&0)a.push()}return a};
+const skip=k=>{const up=[],dn=[];for(let i=0;i+k+1<=7;i++){up.push(i,i+k+1)}for(let i=0;i+k+1<=7;i++){dn.push(7-i,7-i-k-1)}return[up,dn]};
+add('l11','Lesson 11','Skip patterns: 1, 2, 3 and 4 notes skipped.',[1,2,3,4].flatMap(k=>{const[u,d]=skip(k);return[['Aroha – skip '+k,[q(u)]],['Avarohana – skip '+k,[q(d)]]]}));
+add('l12','Lesson 12','Five-note loops, version 2.',[['Aroha',rg(0,5).map(a=>q([a,a+2,a,a+1,a+2]))],['Avarohana',rg(2,7).reverse().map(a=>q([a,a-1,a-2,a,a-2]))]]);
+add('bhopali','Raag Bhopali','Aroh: S R G P D S’. Avroh: S’ D P G R S. Thaat Kalyan, Tintal. Bandish Sthayi: “Jaa jaa jaa re ja re pathikva…”',[['Aroh',[q([0,1,2,4,5,7])]],['Avroh',[q([7,5,4,2,1,0])]],['Sthayi',[parse('GPGR GPDP GR SR P GR GRS'),parse("GRSS S'DSR GGR GRS")]]]);
+add('hamsa','Raag Hamsadhwani','Aroha: S R G P N S’. Avaroha: S’ N P G R S. Vadi R, Samvadi P. Time 6–9 PM.',[['Aroha',[q([0,1,2,4,6,7])]],['Avaroha',[q([7,6,4,2,1,0])]]]);
+// state
+let cur=0,playing=false,timer=null,ac=null,flat=[],lesson=L[0];
+const svg=$('fl'),HX=[510,440,370,240,170,100];
+svg.innerHTML='<defs><linearGradient id="hf"><stop offset="50%" stop-color="var(--ink)"/><stop offset="50%" stop-color="var(--air)"/></linearGradient></defs>'
++'<rect x="335" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><rect x="65" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
++'<rect x="20" y="108" width="710" height="40" rx="10" fill="var(--tube)" stroke="var(--ink)" stroke-width="2"/><ellipse cx="665" cy="128" rx="20" ry="9" fill="var(--air)" stroke="var(--ink)" stroke-width="2"/>'
++HX.map((x,i)=>`<circle class="hole O" id="h${i}" cx="${x}" cy="128" r="15"/>`).join('')
++HX.map((x,i)=>`<g class="fg" id="f${i}"><rect x="${x-21}" y="20" width="42" height="130" rx="21"/></g>`).join('')
++'<ellipse cx="440" cy="182" rx="38" ry="15" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><ellipse cx="170" cy="182" rx="38" ry="15" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><text x="440" y="187" style="fill:var(--ink);font-size:12px">thumb</text><text x="170" y="187" style="fill:var(--ink);font-size:12px">thumb</text>'
++HX.map((x,i)=>`<text x="${x}" y="222">${i+1}</text>`).join('')+'<text x="440" y="256">Right hand</text><text x="170" y="256">Left hand</text><text x="665" y="90">mouth</text>';
+function show(t){const fp=fing(t);[...fp].forEach((c,j)=>{const g=$('f'+j);g.style.transform=`translateY(${c=='X'?0:c=='H'?-22:-46}px)`;g.style.opacity=c=='X'?.95:c=='H'?.75:.3;$('h'+j).setAttribute('class','hole '+c)});
+const sm=SEMI[t.s];$('big').textContent=nm(t);
+$('mt').innerHTML=`<b>${FULL[t.s]}</b> · flute key ${WN[sm]}${t.o<0?' (low)':t.o>0?' (high)':''}<br>Blow ${t.o<0?'gently':t.o>0?'strongly':'moderately'}${t.o>0&&!F_HIGH[t.s]?' · approximate fingering':''}`}
+function tone(t,dur){if(!$('snd').checked)return;ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state=='suspended')ac.resume();
+const f=261.63*Math.pow(2,(SEMI[t.s]+12*t.o)/12),n=ac.currentTime,g=ac.createGain();g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(.35,n+.07);g.gain.setValueAtTime(.3,n+dur-.1);g.gain.linearRampToValueAtTime(0,n+dur);g.connect(ac.destination);
+[[1,1],[2,.3],[3,.1]].forEach(([m,a])=>{const o=ac.createOscillator(),ga=ac.createGain();o.frequency.value=f*m;ga.gain.value=a;o.connect(ga);ga.connect(g);const l=ac.createOscillator(),lg=ac.createGain();l.frequency.value=5.2;lg.gain.value=f*m*.004;l.connect(lg);lg.connect(o.frequency);l.start(n);l.stop(n+dur);o.start(n);o.stop(n+dur)});
+const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=ac.createBufferSource();s.buffer=b;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f*2;const ng=ac.createGain();ng.gain.value=.05;s.connect(bp);bp.connect(ng);ng.connect(g);s.start(n)}
+function mark(i){flat.forEach((x,k)=>{x.el.classList.toggle('on',k==i);x.el.classList.toggle('done',k<i)});const e=flat[i].el;const bx=$('tr');const r=e.getBoundingClientRect(),br=bx.getBoundingClientRect();if(r.top<br.top||r.bottom>br.bottom)bx.scrollTop+=r.top-br.top-br.height/3;show(flat[i].t)}
+function go(i,play){cur=i;mark(i);if(play)tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}
+function step(){const bt=60000/$('bpm').value;const x=flat[cur];timer=setTimeout(()=>{if(!playing)return;let n=cur+1;if(n>=flat.length){if($('lp').checked)n=0;else return stop()}go(n,true);step()},bt*(x.end?1.6:1))}
+function start(){playing=true;$('pl').textContent='⏸ Pause';go(cur,true);step()}
+function stop(){playing=false;clearTimeout(timer);$('pl').textContent='▶ Play'}
+function load(id){stop();lesson=L.find(l=>l.id==id)||L[0];try{history.replaceState(null,'','#'+lesson.id)}catch(e){}
+$('lt').textContent=lesson.t;$('ls').textContent=lesson.sub;flat=[];const tr=$('tr');tr.innerHTML='';tr.scrollTop=0;
+lesson.secs.forEach(([h,rows])=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>{if(playing){clearTimeout(timer);go(idx,true);step()}else go(idx,true)};d.appendChild(b);flat.push({t,el:b,end:k==r.length-1})});tr.appendChild(d)})});
+document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-current',p.dataset.id==lesson.id));const cp=document.querySelector(`.pill[data-id=${lesson.id}]`);if(cp)cp.scrollIntoView({inline:'center',block:'nearest'});cur=0;mark(0)}
+L.forEach(l=>{const b=document.createElement('button');b.className='pill';b.dataset.id=l.id;b.textContent=l.t.replace('Lesson ','L').replace('Raag ','');b.onclick=()=>load(l.id);$('pills').appendChild(b)});
+const nav=d=>{const i=L.indexOf(lesson)+d;if(i>=0&&i<L.length)load(L[i].id)};
+$('pv').onclick=()=>nav(-1);$('nx').onclick=()=>nav(1);
+$('pl').onclick=()=>playing?stop():start();
+$('fw').onclick=()=>{if(cur<flat.length-1)go(cur+1,true)};$('bk').onclick=()=>{if(cur>0)go(cur-1,true)};
+$('bpm').oninput=e=>$('bv').textContent=e.target.value;
+document.addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;if(e.code=='Space'){e.preventDefault();$('pl').click()}if(e.key=='ArrowRight')$('fw').click();if(e.key=='ArrowLeft')$('bk').click()});
+load((location.hash||'').slice(1));
+</script></body></html>
