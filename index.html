@@ -47,7 +47,7 @@ button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
 <p class="sub" id="ls"></p><div id="tr"></div></section>
 <section class="card">
 <div class="now"><div id="big">S</div><div class="meta" id="mt"></div></div>
-<svg id="fl" viewBox="0 0 760 270" role="img" aria-label="Flute with finger positions"></svg>
+<svg id="fl" viewBox="0 0 760 300" role="img" aria-label="Flute with finger positions"></svg>
 <div class="ctl" style="margin-top:8px">
 <button class="b p" id="pl">▶ Play</button>
 <span class="count-in" id="ci" role="status" aria-live="assertive" hidden></span>
@@ -55,7 +55,7 @@ button:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
 <label>Speed <input type="range" id="bpm" min="30" max="150" value="64"><span id="bv">64</span></label>
 <label><input type="checkbox" id="lp"> Loop</label><label><input type="checkbox" id="snd" checked> Sound</label>
 </div>
-<p class="note">Play connects the notes legato in one continuous breath. Right-handed view: you look down at your own hands. Mouth hole on the right, right hand on holes 1–3, left hand on holes 4–6. Dark hole = closed, light = open, half-dark = half hole. Tap any note to jump to it. Fingerings follow the PDF chart (middle octave); check them against your teacher’s, and edit the F table in the page source if needed.</p>
+<p class="note">Play connects notes legato within each section. A 3-second silent breath break separates sections. Right-handed view: you look down at your own hands. Mouth hole on the right, right hand on holes 1–3, left hand on holes 4–6. Dark hole = closed, light = open, half-dark = half hole. Tap any note to jump to it. Fingerings follow the PDF chart (middle octave); check them against your teacher’s, and edit the F table in the page source if needed.</p>
 </section></main>
 <script>
 const $=id=>document.getElementById(id);
@@ -95,16 +95,18 @@ add('l12','Lesson 12','Five-note loops, version 2.',[['Aroha',rg(0,5).map(a=>q([
 add('bhopali','Raag Bhopali','Aroh: S R G P D S’. Avroh: S’ D P G R S. Thaat Kalyan, Tintal. Bandish Sthayi: “Jaa jaa jaa re ja re pathikva…”',[['Aroh',[q([0,1,2,4,5,7])]],['Avroh',[q([7,5,4,2,1,0])]],['Sthayi',[parse('GPGR GPDP GR SR P GR GRS'),parse("GRSS S'DSR GGR GRS")]]]);
 add('hamsa','Raag Hamsadhwani','Aroha: S R G P N S’. Avaroha: S’ N P G R S. Vadi R, Samvadi P. Time 6–9 PM.',[['Aroha',[q([0,1,2,4,6,7])]],['Avaroha',[q([7,6,4,2,1,0])]]]);
 // state
-let cur=0,playing=false,timer=null,countdownTimer=null,countdownRemaining=0,ac=null,breath=null,flat=[],lesson=L[0];
+let cur=0,playing=false,timer=null,countdownTimer=null,countdownRemaining=0,ac=null,breath=null,flat=[],lesson=L[0],sectionPause=false;
+const SECTION_GAP_MS=3000;
 const svg=$('fl'),HX=[510,440,370,240,170,100];
 svg.innerHTML='<defs><linearGradient id="hf"><stop offset="50%" stop-color="var(--ink)"/><stop offset="50%" stop-color="var(--air)"/></linearGradient></defs>'
-+'<rect x="335" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><rect x="65" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
++'<rect x="335" y="2" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
++HX.slice(0,3).map((x,i)=>`<g class="fg" id="f${i}"><rect x="${x-21}" y="20" width="42" height="130" rx="21"/></g>`).join('')
 +'<rect x="20" y="108" width="710" height="40" rx="10" fill="var(--tube)" stroke="var(--ink)" stroke-width="2"/><ellipse cx="665" cy="128" rx="20" ry="9" fill="var(--air)" stroke="var(--ink)" stroke-width="2"/>'
++'<rect x="65" y="222" width="210" height="46" rx="22" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/>'
++HX.slice(3).map((x,i)=>`<g class="fg" id="f${i+3}"><rect x="${x-21}" y="118" width="42" height="105" rx="21"/></g>`).join('')
 +HX.map((x,i)=>`<circle class="hole O" id="h${i}" cx="${x}" cy="128" r="15"/>`).join('')
-+HX.map((x,i)=>`<g class="fg" id="f${i}"><rect x="${x-21}" y="20" width="42" height="130" rx="21"/></g>`).join('')
-+'<ellipse cx="440" cy="182" rx="38" ry="15" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><ellipse cx="170" cy="182" rx="38" ry="15" fill="var(--skin)" stroke="var(--ink)" stroke-width="2"/><text x="440" y="187" style="fill:var(--ink);font-size:12px">thumb</text><text x="170" y="187" style="fill:var(--ink);font-size:12px">thumb</text>'
-+HX.map((x,i)=>`<text x="${x}" y="222">${i+1}</text>`).join('')+'<text x="440" y="256">Right hand</text><text x="170" y="256">Left hand</text><text x="665" y="90">mouth</text>';
-function show(t){const fp=fing(t);[...fp].forEach((c,j)=>{const g=$('f'+j);g.style.transform=`translateY(${c=='X'?0:c=='H'?-22:-46}px)`;g.style.opacity=c=='X'?.95:c=='H'?.75:.3;$('h'+j).setAttribute('class','hole '+c)});
++HX.map((x,i)=>`<text x="${x}" y="222">${i+1}</text>`).join('')+'<text x="440" y="286">Right hand</text><text x="170" y="286">Left hand</text><text x="665" y="90">mouth</text>';
+function show(t){const fp=fing(t);[...fp].forEach((c,j)=>{const g=$('f'+j),lift=c=='X'?0:c=='H'?22:46;g.style.transform=`translateY(${j<3?-lift:lift}px)`;g.style.opacity=c=='X'?.95:c=='H'?.75:.3;$('h'+j).setAttribute('class','hole '+c)});
 const sm=SEMI[t.s];$('big').textContent=nm(t);
 $('mt').innerHTML=`<b>${FULL[t.s]}</b> · flute key ${WN[sm]}${t.o<0?' (low)':t.o>0?' (high)':''}<br>Blow ${t.o<0?'gently':t.o>0?'strongly':'moderately'}${t.o>0&&!F_HIGH[t.s]?' · approximate fingering':''}`}
 function audio(){ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state=='suspended')ac.resume();return ac}
@@ -117,21 +119,22 @@ const f=261.63*Math.pow(2,(SEMI[t.s]+12*t.o)/12),n=ac.currentTime,g=ac.createGai
 [[1,1],[2,.3],[3,.1]].forEach(([m,a])=>{const o=ac.createOscillator(),ga=ac.createGain();o.frequency.value=f*m;ga.gain.value=a;o.connect(ga);ga.connect(g);const l=ac.createOscillator(),lg=ac.createGain();l.frequency.value=5.2;lg.gain.value=f*m*.004;l.connect(lg);lg.connect(o.frequency);l.start(n);l.stop(n+dur);o.start(n);o.stop(n+dur)});
 const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const s=ac.createBufferSource();s.buffer=b;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f*2;const ng=ac.createGain();ng.gain.value=.05;s.connect(bp);bp.connect(ng);ng.connect(g);s.start(n)}
 function mark(i){flat.forEach((x,k)=>{x.el.classList.toggle('on',k==i);x.el.classList.toggle('done',k<i)});const e=flat[i].el;const bx=$('tr');const r=e.getBoundingClientRect(),br=bx.getBoundingClientRect();if(r.top<br.top||r.bottom>br.bottom)bx.scrollTop+=r.top-br.top-br.height/3;show(flat[i].t)}
-function go(i,play){cur=i;mark(i);if(play){if(playing)setBreathNote(flat[i].t);else tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}}
-function step(){const bt=60000/$('bpm').value;const x=flat[cur];timer=setTimeout(()=>{if(!playing)return;let n=cur+1;if(n>=flat.length){if($('lp').checked)n=0;else return stop()}go(n,true);step()},bt*(x.end?1.6:1))}
+function go(i,play){const sectionChanged=flat[cur].section!==flat[i].section;cur=i;mark(i);if(play){if(playing&&sectionChanged){endBreath();sectionPause=true;timer=setTimeout(()=>{if(!playing)return;sectionPause=false;setBreathNote(flat[cur].t);step()},SECTION_GAP_MS);return true}if(playing)setBreathNote(flat[i].t);else tone(flat[i].t,Math.min(60/$('bpm').value*.92,1.6))}return false}
+function jump(i){if(i<0||i>=flat.length)return;if(countdownTimer||playing&&sectionPause){cur=i;mark(i)}else if(playing){clearTimeout(timer);if(!go(i,true))step()}else go(i,true)}
+function step(){const bt=60000/$('bpm').value;const x=flat[cur];timer=setTimeout(()=>{if(!playing)return;let n=cur+1;if(n>=flat.length){if($('lp').checked)n=0;else return stop()}if(!go(n,true))step()},bt*(x.end?1.6:1))}
 function start(){playing=true;$('pl').textContent='⏸ Pause';setBreathNote(flat[cur].t);go(cur,false);step()}
 function countIn(){countdownRemaining=3;$('ci').textContent=`Get ready: ${countdownRemaining}`;$('ci').hidden=false;$('pl').textContent='✕ Cancel';countdownTimer=setInterval(()=>{countdownRemaining--;if(countdownRemaining===0){clearInterval(countdownTimer);countdownTimer=null;$('ci').hidden=true;$('ci').textContent='';start()}else $('ci').textContent=`Get ready: ${countdownRemaining}`},1000)}
-function stop(){playing=false;clearTimeout(timer);clearInterval(countdownTimer);countdownTimer=null;countdownRemaining=0;endBreath();$('ci').hidden=true;$('ci').textContent='';$('pl').textContent='▶ Play'}
+function stop(){playing=false;clearTimeout(timer);clearInterval(countdownTimer);countdownTimer=null;countdownRemaining=0;sectionPause=false;endBreath();$('ci').hidden=true;$('ci').textContent='';$('pl').textContent='▶ Play'}
 function load(id){stop();lesson=L.find(l=>l.id==id)||L[0];try{history.replaceState(null,'','#'+lesson.id)}catch(e){}
 $('lt').textContent=lesson.t;$('ls').textContent=lesson.sub;flat=[];const tr=$('tr');tr.innerHTML='';tr.scrollTop=0;
-lesson.secs.forEach(([h,rows])=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>{if(countdownTimer){cur=idx;mark(idx)}else if(playing){clearTimeout(timer);go(idx,true);step()}else go(idx,true)};d.appendChild(b);flat.push({t,el:b,end:k==r.length-1})});tr.appendChild(d)})});
+lesson.secs.forEach(([h,rows],section)=>{const s=document.createElement('div');s.className='sec';s.textContent=h;tr.appendChild(s);rows.forEach(r=>{const d=document.createElement('div');d.className='row';r.forEach((t,k)=>{const b=document.createElement('button');b.className='chip';b.textContent=nm(t);const idx=flat.length;b.onclick=()=>jump(idx);d.appendChild(b);flat.push({t,el:b,end:k==r.length-1,section})});tr.appendChild(d)})});
 document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-current',p.dataset.id==lesson.id));const cp=document.querySelector(`.pill[data-id=${lesson.id}]`);if(cp)cp.scrollIntoView({inline:'center',block:'nearest'});cur=0;mark(0)}
 L.forEach(l=>{const b=document.createElement('button');b.className='pill';b.dataset.id=l.id;b.textContent=l.t.replace('Lesson ','L').replace('Raag ','');b.onclick=()=>load(l.id);$('pills').appendChild(b)});
 const nav=d=>{const i=L.indexOf(lesson)+d;if(i>=0&&i<L.length)load(L[i].id)};
 $('pv').onclick=()=>nav(-1);$('nx').onclick=()=>nav(1);
 $('pl').onclick=()=>playing||countdownTimer?stop():countIn();
 $('snd').onchange=()=>{if(breath)breath.g.gain.setTargetAtTime($('snd').checked ? .3 : 0,ac.currentTime,.02)};
-$('fw').onclick=()=>{if(cur<flat.length-1)go(cur+1,!countdownTimer)};$('bk').onclick=()=>{if(cur>0)go(cur-1,!countdownTimer)};
+$('fw').onclick=()=>jump(cur+1);$('bk').onclick=()=>jump(cur-1);
 $('bpm').oninput=e=>$('bv').textContent=e.target.value;
 document.addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;if(e.code=='Space'){e.preventDefault();$('pl').click()}if(e.key=='ArrowRight')$('fw').click();if(e.key=='ArrowLeft')$('bk').click()});
 load((location.hash||'').slice(1));
